@@ -1,4 +1,4 @@
-mongoengine-relational
+mongoengine-privileges
 ======================
 
-Mixin for MongoEngine that manages both sides of ToOne or ToMany relations
+Mixin for MongoEngine that manages object-level privileges
