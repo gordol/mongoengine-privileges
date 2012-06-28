@@ -8,8 +8,7 @@ README = open(os.path.join(here, 'README.md')).read()
 requires=[
     'mongoengine',
     'mongoengine_relational',
-    'pyramid',
-    'inspect',
+    'pyramid'
 ]
 
 setup(

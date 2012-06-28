@@ -25,3 +25,14 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+
+# OS or Editor folders and files
+.DS_Store
+thumbs.db
+*.egg-info/
+/__pycache__/
+/.cache/
+/.project/
+/.idea/
+/.pydevproject/
+/.settings/
