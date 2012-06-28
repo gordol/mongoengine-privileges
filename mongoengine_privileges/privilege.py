@@ -2,7 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from mongoengine import *
-
+import mongoengine_privileges
 
 class Privilege( EmbeddedDocument ):
     '''
@@ -11,7 +11,7 @@ class Privilege( EmbeddedDocument ):
     '''
 
     permissions = ListField( StringField() )
-    person = ReferenceField( 'Person' )
+    user = ReferenceField( mongoengine_privileges.user_document )
     group = StringField()
 
     def set( self, permissions ):
@@ -54,5 +54,5 @@ class Privilege( EmbeddedDocument ):
         self.permissions = list( set( self.permissions ).difference( permissions ) )
 
     def __unicode__( self ):
-        return unicode( 'person={}, group={}: {}'.format( self.person, self.group, self.permissions ) )
+        return unicode( 'user={}, group={}: {}'.format( self.user, self.group, self.permissions ) )
 
