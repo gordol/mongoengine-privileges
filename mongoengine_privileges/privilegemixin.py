@@ -107,7 +107,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     @property
     def __acl__( self ):
-        acl = [ ( Allow, ( priv.person and priv.person.id ) or priv.group, priv.permissions ) for priv in self.privileges ]
+        acl = [ ( Allow, ( priv.user and priv.user.id ) or priv.group, priv.permissions ) for priv in self.privileges ]
 
         # Everything that's not explicitly allowed is forbidden; add a final DENY_ALL
         acl.append( DENY_ALL )
@@ -127,7 +127,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         More complex permissions may be implemented as a method, instead of simply checking for existence of
         the permission. If so, this method is invoked and it's result is returned.
 
-        Methods implementing `may_*` should have the following signature: ( permission<str>, person<Person> )
+        Methods implementing `may_*` should have the following signature: ( permission<str>, user<User> )
 
         @param permission:
         @type permission: string
@@ -146,14 +146,14 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def set_permissions( self, permissions, principal ):
         '''
-        Set permissions, as a (list of) strings, for the given `person`.
+        Set permissions, as a (list of) strings, for the given `user`.
         This replaces any previous `permissions` that might be present for
-        `person`.
+        `user`.
 
         @param permissions:
         @type permissions: string or list or tuple
         @param principal:
-        @type principal: Person or string or Privilege
+        @type principal: User or string or Privilege
         @return:
         @rtype: Privilege
         '''
@@ -168,7 +168,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @param permissions:
         @type permissions: string or list or tuple
         @param principal:
-        @type principal: Person or string or Privilege
+        @type principal: User or string or Privilege
         @return:
         @rtype: Privilege
         '''
@@ -183,7 +183,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @param permissions:
         @type permissions: string or list or tuple
         @param principal:
-        @type principal: Person or string or Privilege
+        @type principal: User or string or Privilege
         @return:
         @rtype: Privilege
         '''
@@ -194,11 +194,11 @@ class PrivilegeMixin( RelationManagerMixin ):
     def get_privilege( self, principal, create=False ):
         '''
         Get the Privilege object on this Document for a given `principal`, which can be either
-        a `Person` or a
+        a `User` or a
         If it doesn't exist yet, creates a new Privilege and adds it to `self.privileges`.
 
         @param principal:
-        @type principal: Person or string or Privilege
+        @type principal: User or string or Privilege
         @return:
         @rtype: Privilege
         '''
@@ -208,14 +208,14 @@ class PrivilegeMixin( RelationManagerMixin ):
         privilege = None
 
         for priv in self.privileges:
-            if priv.person == principal or priv.group == principal:
+            if priv.user == principal or priv.group == principal:
                 privilege = priv
                 break
 
         if not privilege and create:
-            person = principal if isinstance( principal, PrivilegeMixin ) else None
+            user = principal if isinstance( principal, PrivilegeMixin ) else None
             group = principal if isinstance( principal, basestring ) else None
-            privilege = Privilege( person=person, group=group )
+            privilege = Privilege( user=user, group=group )
             self.privileges.append( privilege )
 
         return privilege
@@ -223,7 +223,7 @@ class PrivilegeMixin( RelationManagerMixin ):
     def remove_privilege( self, principal ):
         '''
         Remove all `permissions` (the complete `privilege`) from this Document for a `principal`
-        @param principal: Person or string or Privilege
+        @param principal: User or string or Privilege
         @return:
         '''
         privilege = self.get_privilege( principal )

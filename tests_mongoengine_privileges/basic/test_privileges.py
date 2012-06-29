@@ -34,7 +34,7 @@ class PrivilegedDocument( PrivilegeMixin, Document ):
         print( ('pk updated; new={}, old={}').format( value, old_value ) )
         self.set_permissions( [ 'view', 'update' ], request.user )
 
-    def may_update( self, person ):
+    def may_update( self, user ):
         return False
 
 
@@ -110,9 +110,9 @@ class PrivilegeTestCase( unittest.TestCase ):
     def test_get_privilege( self ):
         self.assertEqual( len( self.request.user.privileges ), 0 )
 
-        # Create a `privilege` for a person, then check if `get_privilege` return the correct  `privilege`
+        # Create a `privilege` for a user, then check if `get_privilege` return the correct  `privilege`
         priv = self.request.user.get_privilege( self.request.user, create=True )
-        self.assertEqual( priv.person, self.request.user )
+        self.assertEqual( priv.user, self.request.user )
         self.assertEqual( len( priv.permissions ), 0 )
 
         # Create a `privilege` for a group, then check if `get_privilege` return the correct  `privilege`
@@ -129,7 +129,7 @@ class PrivilegeTestCase( unittest.TestCase ):
 
 
     def test_add_remove_permission( self ):
-        priv = Privilege( person=self.request.user )
+        priv = Privilege( user=self.request.user )
 
         priv.add( 'view' )
 
