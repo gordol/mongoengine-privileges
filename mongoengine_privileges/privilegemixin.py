@@ -47,7 +47,7 @@ class PrivilegeMixin( RelationManagerMixin ):
                 cascade_kwargs.setdefault( 'validate', validate )
                 validate = False
 
-            super( PrivilegeMixin, self ).save( safe=safe, force_insert=force_insert, validate=validate,
+            return super( PrivilegeMixin, self ).save( safe=safe, force_insert=force_insert, validate=validate,
                 write_options=write_options, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs, request=request )
         else:
             raise PermissionError( 'update', permission )
@@ -59,7 +59,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         permission = self.get_permission_for( 'update' )
         if permission == '' or ( permission and self.may( permission, request ) ):
-            super( PrivilegeMixin, self ).update( **kwargs )
+            return super( PrivilegeMixin, self ).update( **kwargs )
         else:
             raise PermissionError( 'update', permission )
 
@@ -78,7 +78,9 @@ class PrivilegeMixin( RelationManagerMixin ):
         permission = self.get_permission_for( 'update' )
 
         if source_object.may( permission, request ):
-            super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
+            return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
+        else:
+            raise PermissionError( 'update_privileges', permission )
 
     def delete( self, safe=False, request=None ):
         if not request:
@@ -86,7 +88,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         permission = self.get_permission_for( 'delete' )
         if permission == '' or ( permission and self.may( permission, request ) ):
-            super( PrivilegeMixin, self ).delete( safe=safe )
+            return super( PrivilegeMixin, self ).delete( safe=safe )
         else:
             raise PermissionError( 'delete', permission )
 
