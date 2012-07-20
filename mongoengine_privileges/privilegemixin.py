@@ -110,7 +110,8 @@ class PrivilegeMixin( RelationManagerMixin ):
         acl = []
 
         for priv in self.privileges:
-            user_id = priv._data[ 'user' ] and priv._data[ 'user' ].id if isinstance( priv._data[ 'user' ], DBRef ) else priv._data[ 'user' ].pk
+            user = priv._data[ 'user' ]
+            user_id = user and ( user.id if isinstance( user, DBRef ) else user.pk )
             acl.append( ( Allow, user_id or priv.group, priv.permissions ) )
 
         # Everything that's not explicitly allowed is forbidden; add a final DENY_ALL
