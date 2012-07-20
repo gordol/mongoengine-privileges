@@ -7,6 +7,7 @@ from pyramid.security import ( Allow, DENY_ALL, has_permission )
 
 from mongoengine import *
 from mongoengine_relational import RelationManagerMixin
+from bson import DBRef
 
 from .exceptions import PermissionError
 from .privilege import Privilege
@@ -106,7 +107,11 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     @property
     def __acl__( self ):
-        acl = [ ( Allow, ( priv.user and priv.user.id ) or priv.group, priv.permissions ) for priv in self.privileges ]
+        acl = []
+
+        for priv in self.privileges:
+            user_id = priv._data[ 'user' ] and priv._data[ 'user' ].id if isinstance( priv._data[ 'user' ], DBRef ) else priv._data[ 'user' ].pk
+            acl.append( ( Allow, user_id or priv.group, priv.permissions ) )
 
         # Everything that's not explicitly allowed is forbidden; add a final DENY_ALL
         acl.append( DENY_ALL )
@@ -207,7 +212,8 @@ class PrivilegeMixin( RelationManagerMixin ):
         privilege = None
 
         for priv in self.privileges:
-            if priv.user == principal or priv.group == principal:
+            # Get the correct privilege. Checks `user` as a DBRef if possible, instead of dereferencing it.
+            if priv.group == principal or ( isinstance( principal, PrivilegeMixin ) and principal._equals( priv._data[ 'user' ] ) ):
                 privilege = priv
                 break
 
