@@ -63,6 +63,8 @@ class PrivilegeMixin( RelationManagerMixin ):
         else:
             permission = self.get_permission_for( field_name )
 
+            kwargs[ 'set__{}'.format( field_name ) ] = self[ field_name ]
+
             # Check if the request.user is allowed to update the document calling `update` on this document.
             if require_caller_update:
                 source_object = inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
