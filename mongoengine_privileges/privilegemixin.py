@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import inspect
 
 from pyramid.security import ( Allow, DENY_ALL, has_permission )
+from pyramid.request import Request
 
 from mongoengine import *
 from mongoengine_relational import RelationManagerMixin
@@ -25,8 +26,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     privileges = ListField( EmbeddedDocumentField( 'Privilege' ) )
 
-    def save( self, safe=True, force_insert=False, validate=True, write_options=None, cascade=None, cascade_kwargs=None,
-              _refs=None, request=None ):
+    def save( self, safe=True, force_insert=False, validate=True, write_options=None, cascade=None, cascade_kwargs=None, _refs=None, request=None ):
         request = request or ( cascade_kwargs and cascade_kwargs[ 'request' ] ) or None
 
         if not request:
@@ -54,11 +54,22 @@ class PrivilegeMixin( RelationManagerMixin ):
             raise PermissionError( 'update', permission )
 
 
-    def update( self, request=None, **kwargs ):
-        if not request:
-            raise ValueError( '`update` needs a `request` parameter (in order to properly invoke `may_*` callbacks)' )
+    def update( self, request, field_name=None, require_caller_update=True, **kwargs ):
+        '''
+        Update one or more fields on this document. When updating a single field,
+        '''
+        if field_name is None:
+            permission = self.get_permission_for( 'update' )
+        else:
+            permission = self.get_permission_for( field_name )
 
-        permission = self.get_permission_for( 'update' )
+            # Check if the request.user is allowed to update the document calling `update` on this document.
+            if require_caller_update:
+                source_object = inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
+                permission = self.get_permission_for( 'update' )
+                if not source_object.may( permission, request ):
+                    raise PermissionError( 'update_{}'.format( field_name ), permission )
+
         if permission == '' or ( permission and self.may( permission, request ) ):
             return super( PrivilegeMixin, self ).update( **kwargs )
         else:
@@ -69,31 +80,33 @@ class PrivilegeMixin( RelationManagerMixin ):
         Explicitly update `privileges` ONLY; this bypasses other security.
         However, the current `request.user` MUST be allowed to update the Document that is trying to modify
         the `privileges` on this Document.
+
         @param request:
+        @type request: Request
         @return:
         '''
-        source_object = inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
-        permission = self.get_permission_for( 'update' )
+        self.update( request, 'privileges' )
 
-        if source_object.may( permission, request ):
-            return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
-        else:
-            raise PermissionError( 'update_privileges', permission )
+    def delete( self, request, safe=False ):
+        '''
+        Overridden `delete`.
 
-    def delete( self, safe=False, request=None ):
-        if not request:
-            raise ValueError( '`delete` needs a `request` parameter (in order to properly invoke `may_*` callbacks)' )
-
+        @param request:
+        @type request: Request
+        '''
         permission = self.get_permission_for( 'delete' )
         if permission == '' or ( permission and self.may( permission, request ) ):
             return super( PrivilegeMixin, self ).delete( safe=safe )
         else:
             raise PermissionError( 'delete', permission )
 
-    def validate( self, request=None ):
-        if not request:
-            raise ValueError( '`validate` needs a `request` parameter (in order to properly invoke `may_*` callbacks)' )
+    def validate( self, request ):
+        '''
+        Overridden `validate`. Checks individual permissions on relational fields.
 
+        @param request:
+        @type request: Request
+        '''
         # Check permissions if the document exists
         if self.pk:
             changed_relations = self.get_changed_relations()
