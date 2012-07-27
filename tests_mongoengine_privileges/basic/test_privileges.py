@@ -198,10 +198,14 @@ class PrivilegeTestCase( unittest.TestCase ):
 
         # `update` has been granted
         self.assertTrue( dir.may( 'update', self.request ) )
+
         # `bogus` hasn't
         self.assertFalse( dir.may( 'bogus', self.request ) )
-        # `None` should fail
-        self.assertFalse( dir.may( None, self.request ) )
+
+        # `None` and '' are allowed
+        self.assertTrue( dir.may( None, self.request ) )
+        self.assertTrue( dir.may( '', self.request ) )
+
         # `add_file` has been implemented as a method, `may_add_file`
         self.assertTrue( dir.may( 'add_file', self.request ) )
         self.assertEqual( dir.may_add_file_called, 1 )
@@ -233,4 +237,7 @@ class PrivilegeTestCase( unittest.TestCase ):
         self.assertEqual( dir.may_delete_called, 0 )
         dir.delete( request=self.request )
         self.assertEqual( dir.may_delete_called, 0 )
+
+    def test_update( self ):
+        pass
 

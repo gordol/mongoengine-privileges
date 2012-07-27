@@ -38,7 +38,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         # - it's new,
         # - the required permission for this action has been explicitly set to an empty string (''),
         # - or the user has the appropriate permission
-        if self.pk is None or permission == '' or ( permission and self.may( permission, request ) ):
+        if self.pk is None or self.may( permission, request ):
 
             # Run validation now, since we can pass it `request` so it can check permissions.
             if validate:
@@ -54,25 +54,40 @@ class PrivilegeMixin( RelationManagerMixin ):
             raise PermissionError( 'update', permission )
 
 
-    def update( self, request, field_name=None, require_caller_update=True, **kwargs ):
+    def update( self, request, field_name=None, caller=None, caller_permission='update', **kwargs ):
         '''
         Update one or more fields on this document. When updating a single field,
+
+        If `caller` is not supplied but `field_name` is, `caller` is set to `self`.
+
+        @param request:
+        @param field_name:
+        @param caller:
+        @type caller: Document
+        @param caller_permission:
+        @param kwargs:
+        @return:
         '''
         if field_name is None:
             permission = self.get_permission_for( 'update' )
         else:
-            permission = self.get_permission_for( field_name )
+            if not getattr( self, field_name, None ):
+                AttributeError( 'Cannot resolve field={} on {}'.format( field_name, self ) )
 
-            kwargs[ 'set__{}'.format( field_name ) ] = self[ field_name ]
+            caller = caller or self
 
             # Check if the request.user is allowed to update the document calling `update` on this document.
-            if require_caller_update:
-                source_object = inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
-                permission = self.get_permission_for( 'update' )
-                if not source_object.may( permission, request ):
-                    raise PermissionError( 'update_{}'.format( field_name ), permission )
+            if caller_permission:
+                if not caller.may( caller_permission, request ):
+                    raise PermissionError( 'update_{}'.format( field_name ), caller_permission )
 
-        if permission == '' or ( permission and self.may( permission, request ) ):
+            # Add `field_name` to kwargs, so it will be passed to the `update` call
+            kwargs[ 'set__{}'.format( field_name ) ] = self[ field_name ]
+
+            # If an extra permission has been configured for `field_name`, check it
+            permission = self.get_permission_for( field_name )
+
+        if self.may( permission, request ):
             return super( PrivilegeMixin, self ).update( **kwargs )
         else:
             raise PermissionError( 'update', permission )
@@ -87,7 +102,8 @@ class PrivilegeMixin( RelationManagerMixin ):
         @type request: Request
         @return:
         '''
-        self.update( request, 'privileges' )
+        caller = inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
+        self.update( request, 'privileges', caller=caller )
 
     def delete( self, request, safe=False ):
         '''
@@ -97,7 +113,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @type request: Request
         '''
         permission = self.get_permission_for( 'delete' )
-        if permission == '' or ( permission and self.may( permission, request ) ):
+        if self.may( permission, request ):
             return super( PrivilegeMixin, self ).delete( safe=safe )
         else:
             raise PermissionError( 'delete', permission )
@@ -155,6 +171,10 @@ class PrivilegeMixin( RelationManagerMixin ):
         @return:
         @rtype: bool
         '''
+        # Empty/false permissions may pass
+        if not permission:
+            return True
+
         method = getattr( self, 'may_{}'.format( permission ), None )
 
         if callable( method ):
@@ -185,9 +205,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         Add permissions for a `principal`, as a (list of) strings.
 
-        @param permissions:
         @type permissions: string or list or tuple
-        @param principal:
         @type principal: User or string or Privilege
         @return:
         @rtype: Privilege
