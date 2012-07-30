@@ -107,7 +107,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def delete( self, request, safe=False ):
         '''
-        Overridden `delete`.
+        Overridden `delete`. Checks if the current user has the appropriate `delete` privilege to execute this action.
 
         @param request:
         @type request: Request
@@ -120,7 +120,8 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def validate( self, request ):
         '''
-        Overridden `validate`. Checks individual permissions on relational fields.
+        Overridden `validate`. Checks if the current user has the appropriate privilege for each
+        changed relational field.
 
         @param request:
         @type request: Request
@@ -184,11 +185,47 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         return result
 
+    def grant( self, permissions, principal, request ):
+        '''
+        Add permissions for the given principal, and persists the updated
+        privileges right away. The permission check for updating the Document
+        is performed before actually removing the permissions.
+
+        @param permissions:
+        @param principal:
+        @param request:
+        @return:
+        '''
+        permission = self.get_permission_for( 'update' )
+
+        if self.may( permission, request ):
+            self.add_permissions( permissions, principal )
+            return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
+
+
+    def revoke( self, permissions, principal, request ):
+        '''
+        Remove permissions for the given principal, and persists the updated
+        privileges right away. The permission check for updating the Document
+        is performed before actually removing the permissions, so `revoke` can
+        be used to remove the privilege required for `update`.
+
+        @param permissions:
+        @param principal:
+        @return:
+        '''
+        permission = self.get_permission_for( 'update' )
+
+        if self.may( permission, request ):
+            self.remove_permissions( permissions, principal )
+            return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
+
     def set_permissions( self, permissions, principal ):
         '''
         Set permissions, as a (list of) strings, for the given `user`.
         This replaces any previous `permissions` that might be present for
-        `user`.
+        `user`. This method modifies the `privileges` field on the Document,
+        but doesn't persist changes yet.
 
         @param permissions:
         @type permissions: string or list or tuple
@@ -203,7 +240,9 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def add_permissions( self, permissions, principal ):
         '''
-        Add permissions for a `principal`, as a (list of) strings.
+        Add permissions for a `principal`, as a (list of) strings. This method
+        modifies the `privileges` field on the Document, but doesn't persist
+        changes yet.
 
         @type permissions: string or list or tuple
         @type principal: User or string or Privilege
@@ -216,7 +255,9 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def remove_permissions( self, permissions, principal ):
         '''
-        Remove permissions for a `principal`, as a (list of) strings.
+        Remove permissions for a `principal`, as a (list of) strings. This
+        method modifies the `privileges` field on the Document, but doesn't
+        persist changes yet.
 
         @param permissions:
         @type permissions: string or list or tuple
@@ -231,9 +272,13 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def get_privilege( self, principal, create=False ):
         '''
-        Get the Privilege object on this Document for a given `principal`, which can be either
-        a `User` or a
-        If it doesn't exist yet, creates a new Privilege and adds it to `self.privileges`.
+        Get the Privilege object on this Document for a given `principal`,
+        which can be either a `User` or a group name. If it doesn't exist yet,
+        creates a new Privilege and adds it to `self.privileges`.
+
+        This method modifies the `privileges` field on the Document, but
+        doesn't persist changes yet.
+
 
         @param principal:
         @type principal: User or string or Privilege
@@ -261,7 +306,10 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def remove_privilege( self, principal ):
         '''
-        Remove all `permissions` (the complete `privilege`) from this Document for a `principal`
+        Remove all `permissions` (the complete `privilege`) from this Document
+        for the given `principal`. This method modifies the `privileges` field
+        on the Document, but doesn't persist changes yet.
+
         @param principal: User or string or Privilege
         @return:
         '''
@@ -270,7 +318,9 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def clear_privileges( self ):
         '''
-        Remove all existing privileges (and thus permissions) from this Document
+        Remove all existing privileges (and thus permissions) from this Document.
+        This method modifies the `privileges` field on the Document, but
+        doesn't persist changes yet.
         @return:
         '''
         self.privileges = []

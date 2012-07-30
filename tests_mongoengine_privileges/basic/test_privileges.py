@@ -241,3 +241,12 @@ class PrivilegeTestCase( unittest.TestCase ):
     def test_update( self ):
         pass
 
+    def test_update_privileges( self ):
+        pass
+
+    def test_grant( self ):
+        pass
+
+    def test_revoke( self ):
+        pass
+
