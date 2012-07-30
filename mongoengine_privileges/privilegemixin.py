@@ -26,11 +26,17 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     privileges = ListField( EmbeddedDocumentField( 'Privilege' ) )
 
-    def save( self, safe=True, force_insert=False, validate=True, write_options=None, cascade=None, cascade_kwargs=None, _refs=None, request=None ):
+    def save( self, request=None, safe=True, force_insert=False, validate=True, write_options=None, cascade=None, cascade_kwargs=None, _refs=None ):
+        '''
+        Overridden save. Checks permissions for the `update` action, or for individual relations if the `request.user`
+        is not allowed to update the Document as a whole.
+        '''
         request = request or ( cascade_kwargs and cascade_kwargs[ 'request' ] ) or None
 
         if not request:
             raise ValueError( '`save` needs a `request` parameter (in order to properly invoke `may_*` and `on_change*` callbacks)' )
+        elif not isinstance( request, Request ):
+            raise ValueError( 'request={} should be an instance of `pyramid.request.Request`'.format( request ) )
 
         permission = self.get_permission_for( 'update' )
 
@@ -51,14 +57,22 @@ class PrivilegeMixin( RelationManagerMixin ):
             return super( PrivilegeMixin, self ).save( safe=safe, force_insert=force_insert, validate=validate,
                 write_options=write_options, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs, request=request )
         else:
-            raise PermissionError( 'update', permission )
+            # Try to save individual fields (relations). The user may have permission(s) to save
+            # individual relations, instead of the complete object.
+            changed_relations = self.get_changed_relations()
 
+            for relation in changed_relations:
+                permission = self.get_permission_for( relation )
+                self.update( request, field_name=relation, caller=self, caller_permission=permission )
+
+            if not changed_relations:
+                raise PermissionError( 'update', permission )
 
     def update( self, request, field_name=None, caller=None, caller_permission='update', **kwargs ):
         '''
         Update one or more fields on this document. When updating a single field,
 
-        If `caller` is not supplied but `field_name` is, `caller` is set to `self`.
+        If `caller` is not supplied when `field_name` is, `caller` is set to `self`.
 
         @param request:
         @param field_name:
@@ -81,14 +95,11 @@ class PrivilegeMixin( RelationManagerMixin ):
                 if not caller.may( caller_permission, request ):
                     raise PermissionError( 'update_{}'.format( field_name ), caller_permission )
 
-            # Add `field_name` to kwargs, so it will be passed to the `update` call
-            kwargs[ 'set__{}'.format( field_name ) ] = self[ field_name ]
-
-            # If an extra permission has been configured for `field_name`, check it
+            # If a specific permission has been configured for `field_name`, check it
             permission = self.get_permission_for( field_name )
 
         if self.may( permission, request ):
-            return super( PrivilegeMixin, self ).update( **kwargs )
+            return super( PrivilegeMixin, self ).update( request, field_name, **kwargs )
         else:
             raise PermissionError( 'update', permission )
 
@@ -126,7 +137,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @param request:
         @type request: Request
         '''
-        # Check permissions if the document exists
+        # Check permissions for updated relations if the document has an id
         if self.pk:
             changed_relations = self.get_changed_relations()
 
@@ -202,7 +213,6 @@ class PrivilegeMixin( RelationManagerMixin ):
             self.add_permissions( permissions, principal )
             return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
 
-
     def revoke( self, permissions, principal, request ):
         '''
         Remove permissions for the given principal, and persists the updated
@@ -218,7 +228,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         if self.may( permission, request ):
             self.remove_permissions( permissions, principal )
-            return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
+            return super( PrivilegeMixin, self ).update( request, 'privileges' )
 
     def set_permissions( self, permissions, principal ):
         '''
