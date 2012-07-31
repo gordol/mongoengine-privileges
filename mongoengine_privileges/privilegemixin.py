@@ -20,6 +20,7 @@ class PrivilegeMixin( RelationManagerMixin ):
     '''
 
     default_permissions = {
+        'create': 'create',
         'update': 'update',
         'delete': 'delete'
     }
@@ -38,13 +39,16 @@ class PrivilegeMixin( RelationManagerMixin ):
         elif not isinstance( request, Request ):
             raise ValueError( 'request={} should be an instance of `pyramid.request.Request`'.format( request ) )
 
-        permission = self.get_permission_for( 'update' )
+        if self.pk is None:
+            permission = self.get_permission_for( 'create' )
+        else:
+            permission = self.get_permission_for( 'update' )
 
         # A document may be saved if:
         # - it's new,
         # - the required permission for this action has been explicitly set to an empty string (''),
         # - or the user has the appropriate permission
-        if self.pk is None or self.may( permission, request ):
+        if self.may( permission, request ):
 
             # Run validation now, since we can pass it `request` so it can check permissions.
             if validate:
@@ -56,17 +60,19 @@ class PrivilegeMixin( RelationManagerMixin ):
 
             return super( PrivilegeMixin, self ).save( safe=safe, force_insert=force_insert, validate=validate,
                 write_options=write_options, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs, request=request )
-        else:
-            # Try to save individual fields (relations). The user may have permission(s) to save
-            # individual relations, instead of the complete object.
+        elif self.pk:
+            #  Try to save individual fields (relations), since the user may have permission(s) to save these,
+            # instead of the complete object.
             changed_relations = self.get_changed_relations()
 
             for relation in changed_relations:
-                permission = self.get_permission_for( relation )
+                permission = self.get_permission_for( relation ) or permission
                 self.update( request, field_name=relation, caller=self, caller_permission=permission )
 
             if not changed_relations:
-                raise PermissionError( 'update', permission )
+                raise PermissionError( 'save', permission )
+        else:
+            raise PermissionError( 'save', permission )
 
     def update( self, request, field_name=None, caller=None, caller_permission='update', **kwargs ):
         '''
@@ -195,6 +201,15 @@ class PrivilegeMixin( RelationManagerMixin ):
             result = has_permission( permission, self, request )
 
         return result
+
+#    def may_create( self, request ):
+#        '''
+#        Default implementation for `may_create`, so `create` will be allowed by default.
+#
+#        @param request:
+#        @return:
+#        '''
+#        return True
 
     def grant( self, permissions, principal, request ):
         '''
