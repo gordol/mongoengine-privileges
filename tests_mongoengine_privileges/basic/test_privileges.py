@@ -26,15 +26,19 @@ class PrivilegedDocument( PrivilegeMixin, Document ):
 
     meta = {
         'permissions': {
+            'create': 'create',
             'update': 'update'
         }
     }
 
-    def on_change_pk( self, value, old_value, request, field_name ):
-        print( ('pk updated; new={}, old={}').format( value, old_value ) )
+    def on_change_pk( self, value, prev_value, request, field_name ):
+        print( ('pk updated; current={}, previous={}').format( value, prev_value ) )
         self.set_permissions( [ 'view', 'update' ], request.user )
 
-    def may_update( self, user ):
+    def may_create( self, request ):
+        return True
+
+    def may_update( self, request ):
         return False
 
 
@@ -49,6 +53,7 @@ class Directory( PrivilegeMixin, Document ):
 
     meta = {
         'permissions': {
+            'create': 'create',
             'update': 'update',
             'files': 'add_file',
             'delete': ''
@@ -76,8 +81,8 @@ class File( PrivilegeMixin, Document ):
     type = StringField()
     directory = ReferenceField( 'Directory', related_name='files', required=True ) # hasmany relation
 
-    def on_change_directory( self, value, old_value, **kwargs ):
-        print( ('directory updated; new={}, old={}').format( value, old_value ) )
+    def on_change_directory( self, value, prev_value, **kwargs ):
+        print( ('directory updated; current={}, previous={}').format( value, prev_value ) )
     
     
 
@@ -170,14 +175,15 @@ class PrivilegeTestCase( unittest.TestCase ):
     def test_on_change( self ):
         doc = PrivilegedDocument()
 
-        self.assertFalse( doc.may( 'view', self.request ) )
+        self.assertFalse( doc.may( self.request, 'view' ) )
+        self.assertTrue( doc.may( self.request, 'create' ) )
 
         doc.save( request=self.request )
 
         print( self.request, self.request.user )
         print( doc.privileges )
 
-        self.assertTrue( doc.may( 'view', self.request ) )
+        self.assertTrue( doc.may( self.request, 'view' ) )
 
 
     def test_meta( self ):
@@ -197,17 +203,17 @@ class PrivilegeTestCase( unittest.TestCase ):
         dir.save( request=self.request )
 
         # `update` has been granted
-        self.assertTrue( dir.may( 'update', self.request ) )
+        self.assertTrue( dir.may( self.request, 'update' ) )
 
         # `bogus` hasn't
-        self.assertFalse( dir.may( 'bogus', self.request ) )
+        self.assertFalse( dir.may( self.request, 'bogus' ) )
 
         # `None` and '' are allowed
-        self.assertTrue( dir.may( None, self.request ) )
-        self.assertTrue( dir.may( '', self.request ) )
+        self.assertTrue( dir.may( self.request, None ) )
+        self.assertTrue( dir.may( self.request, '' ) )
 
         # `add_file` has been implemented as a method, `may_add_file`
-        self.assertTrue( dir.may( 'add_file', self.request ) )
+        self.assertTrue( dir.may( self.request, 'add_file' ) )
         self.assertEqual( dir.may_add_file_called, 1 )
 
         # `validate` could, but shouldn't, raise an exception

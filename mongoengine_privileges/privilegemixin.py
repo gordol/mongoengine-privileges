@@ -48,7 +48,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         # - it's new,
         # - the required permission for this action has been explicitly set to an empty string (''),
         # - or the user has the appropriate permission
-        if self.may( permission, request ):
+        if self.may( request, permission ):
 
             # Run validation now, since we can pass it `request` so it can check permissions.
             if validate:
@@ -104,7 +104,7 @@ class PrivilegeMixin( RelationManagerMixin ):
             # If a specific permission has been configured for `field_name`, check it
             permission = self.get_permission_for( field_name )
 
-        if self.may( permission, request ):
+        if self.may( request, permission ):
             return super( PrivilegeMixin, self ).update( request, field_name, **kwargs )
         else:
             raise PermissionError( 'update', permission )
@@ -130,7 +130,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @type request: Request
         '''
         permission = self.get_permission_for( 'delete' )
-        if self.may( permission, request ):
+        if self.may( request, permission ):
             return super( PrivilegeMixin, self ).delete( safe=safe )
         else:
             raise PermissionError( 'delete', permission )
@@ -149,7 +149,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
             for relation_name in changed_relations:
                 permission = self.get_permission_for( relation_name )
-                if permission and not self.may( permission, request ):
+                if permission and not self.may( request, permission ):
                     raise PermissionError( relation_name, permission )
 
         return super( PrivilegeMixin, self ).validate()
@@ -174,7 +174,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         permissions = self._meta.get( 'permissions', self.default_permissions )
         return permissions.get( name, None )
 
-    def may( self, permission, request ):
+    def may( self, request, permission ):
         '''
         Check if the current user is allowed to execute `permission` on this Document.
 
@@ -183,9 +183,10 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         Methods implementing `may_*` should have the following signature: ( permission<str>, user<User> )
 
+        @param request: the Request object
+        @type request: pyramid.request.Request
         @param permission:
         @type permission: string
-        @param request: the Request object
         @return:
         @rtype: bool
         '''
@@ -202,16 +203,16 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         return result
 
-#    def may_create( self, request ):
-#        '''
-#        Default implementation for `may_create`, so `create` will be allowed by default.
-#
-#        @param request:
-#        @return:
-#        '''
-#        return True
+    def may_create( self, request ):
+        '''
+        Default implementation for `may_create`, so `create` will be allowed by default.
 
-    def grant( self, permissions, principal, request ):
+        @param request:
+        @return:
+        '''
+        return True
+
+    def grant( self, request, permissions, principal ):
         '''
         Add permissions for the given principal, and persists the updated
         privileges right away. The permission check for updating the Document
@@ -224,11 +225,11 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         permission = self.get_permission_for( 'update' )
 
-        if self.may( permission, request ):
+        if self.may( request, permission ):
             self.add_permissions( permissions, principal )
             return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
 
-    def revoke( self, permissions, principal, request ):
+    def revoke( self, request, permissions, principal ):
         '''
         Remove permissions for the given principal, and persists the updated
         privileges right away. The permission check for updating the Document
@@ -241,7 +242,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         permission = self.get_permission_for( 'update' )
 
-        if self.may( permission, request ):
+        if self.may( request, permission ):
             self.remove_permissions( permissions, principal )
             return super( PrivilegeMixin, self ).update( request, 'privileges' )
 
