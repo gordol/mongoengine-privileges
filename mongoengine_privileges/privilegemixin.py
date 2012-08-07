@@ -13,6 +13,8 @@ from bson import DBRef
 from .exceptions import PermissionError
 from .privilege import Privilege
 
+import mongoengine_privileges
+
 
 class PrivilegeMixin( RelationManagerMixin ):
     '''
@@ -98,7 +100,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
             # Check if the request.user is allowed to update the document calling `update` on this document.
             if caller_permission:
-                if not caller.may( caller_permission, request ):
+                if not caller.may( request, caller_permission ):
                     raise PermissionError( 'update_{}'.format( field_name ), caller_permission )
 
             # If a specific permission has been configured for `field_name`, check it
@@ -210,7 +212,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @param request:
         @return:
         '''
-        return True
+        return mongoengine_privileges.may_create_default
 
     def grant( self, request, permissions, principal ):
         '''

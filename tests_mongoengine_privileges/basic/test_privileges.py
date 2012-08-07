@@ -69,6 +69,9 @@ class Directory( PrivilegeMixin, Document ):
 
     may_delete_called = 0
 
+    def may_create( self, request ):
+        return True
+
     def may_delete( self, request ):
         return True
 
@@ -80,6 +83,9 @@ class File( PrivilegeMixin, Document ):
     name = StringField( required=True )
     type = StringField()
     directory = ReferenceField( 'Directory', related_name='files', required=True ) # hasmany relation
+
+    def may_create( self, request ):
+        return True
 
     def on_change_directory( self, value, prev_value, **kwargs ):
         print( ('directory updated; current={}, previous={}').format( value, prev_value ) )
