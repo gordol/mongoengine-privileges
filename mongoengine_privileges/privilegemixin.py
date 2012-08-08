@@ -111,7 +111,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         else:
             raise PermissionError( 'update', permission )
 
-    def update_privileges( self, request ):
+    def update_privileges( self, request, caller=None ):
         '''
         Explicitly update `privileges` ONLY; this bypasses other security.
         However, the current `request.user` MUST be allowed to update the Document that is trying to modify
@@ -121,7 +121,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         @type request: Request
         @return:
         '''
-        caller = inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
+        caller = caller or inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
         self.update( request, 'privileges', caller=caller )
 
     def delete( self, request, safe=False ):
