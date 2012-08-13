@@ -133,7 +133,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         permission = self.get_permission_for( 'delete' )
         if self.may( request, permission ):
-            return super( PrivilegeMixin, self ).delete( safe=safe )
+            return super( PrivilegeMixin, self ).delete( request=request, safe=safe )
         else:
             raise PermissionError( 'delete', permission )
 
