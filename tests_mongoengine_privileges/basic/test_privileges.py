@@ -100,6 +100,9 @@ class PrivilegeTestCase( unittest.TestCase ):
         self.request = Request.blank( '/api/v1/' )
         self.request.user = Person( id=user_id, name='dude', email='dude@progressivecompany.com', groups=[ 'g:deliverable1' ] )
 
+        # Instantiate a DocumentCache; it will attach itself to `request.cache`.
+        DocumentCache( self.request )
+
         self.config = testing.setUp( request=self.request )
 
         self.config.testing_securitypolicy( userid=user_id, groupids=self.request.user.groups, permissive=True )
