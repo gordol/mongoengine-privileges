@@ -8,7 +8,7 @@ from pyramid.request import Request
 
 from mongoengine import *
 from mongoengine_relational import RelationManagerMixin
-from bson import DBRef
+from bson import DBRef, ObjectId
 
 from .exceptions import PermissionError
 from .privilege import Privilege
@@ -161,9 +161,20 @@ class PrivilegeMixin( RelationManagerMixin ):
         acl = []
 
         for priv in self.privileges:
-            user = priv._data[ 'user' ]
-            user_id = user and ( user.id if isinstance( user, DBRef ) else user.pk )
-            acl.append( ( Allow, user_id or priv.group, priv.permissions ) )
+            user = priv[ 'user' ]
+
+            if user:
+                if isinstance( user, ObjectId ):
+                    principal = user
+                elif isinstance( user, DBRef ):
+                    principal = user.id
+                elif isinstance( user, Document ):
+                    principal = user.pk
+            else:
+                principal = priv.group
+
+            if principal:
+                acl.append( ( Allow, principal, priv.permissions ) )
 
         # Everything that's not explicitly allowed is forbidden; add a final DENY_ALL
         acl.append( DENY_ALL )
@@ -319,14 +330,18 @@ class PrivilegeMixin( RelationManagerMixin ):
         privilege = None
 
         for priv in self.privileges:
-            # Get the correct privilege. Checks `user` as a DBRef if possible, instead of dereferencing it.
-            if priv.group == principal or ( isinstance( principal, PrivilegeMixin ) and principal._equals( priv._data[ 'user' ] ) ):
+            # Get the correct privilege.
+            if priv.group == principal or ( isinstance( principal, Document ) and principal.pk and principal.pk == priv[ 'user' ] ):
                 privilege = priv
                 break
 
         if not privilege and create:
-            user = principal if isinstance( principal, PrivilegeMixin ) else None
+            user = principal.pk if isinstance( principal, Document ) else None
             group = principal if isinstance( principal, basestring ) else None
+
+            if not user and not group:
+                raise AttributeError( 'Either a user or group is needed to create a `Privilege`' )
+
             privilege = Privilege( user=user, group=group )
             self.privileges.append( privilege )
 

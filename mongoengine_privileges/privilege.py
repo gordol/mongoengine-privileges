@@ -11,7 +11,7 @@ class Privilege( EmbeddedDocument ):
     '''
 
     permissions = ListField( StringField() )
-    user = ReferenceField( mongoengine_privileges.user_document )
+    user = ObjectIdField()
     group = StringField()
 
     def set( self, permissions ):

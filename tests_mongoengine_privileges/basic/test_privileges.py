@@ -126,7 +126,7 @@ class PrivilegeTestCase( unittest.TestCase ):
 
         # Create a `privilege` for a user, then check if `get_privilege` return the correct  `privilege`
         priv = self.request.user.get_privilege( self.request.user, create=True )
-        self.assertEqual( priv.user, self.request.user )
+        self.assertEqual( priv.user, self.request.user.pk )
         self.assertEqual( len( priv.permissions ), 0 )
 
         # Create a `privilege` for a group, then check if `get_privilege` return the correct  `privilege`
