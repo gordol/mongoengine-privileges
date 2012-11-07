@@ -86,7 +86,8 @@ class PrivilegeMixin( RelationManagerMixin ):
         @param field_name:
         @param caller:
         @type caller: Document
-        @param caller_permission:
+        @param caller_permission: a permission that is required to perform an update regardless of other checks.
+                Defaults to 'update'.
         @param kwargs:
         @return:
         '''
