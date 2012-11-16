@@ -60,8 +60,8 @@ class PrivilegeMixin( RelationManagerMixin ):
                 cascade_kwargs.setdefault( 'validate', validate )
                 validate = False
 
-            return super( PrivilegeMixin, self ).save( safe=safe, force_insert=force_insert, validate=validate,
-                write_options=write_options, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs, request=request )
+            return super( PrivilegeMixin, self ).save( request=request, safe=safe, force_insert=force_insert,
+                validate=validate, write_options=write_options, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs )
         elif self.pk:
             #  Try to save individual fields (relations), since the user may have permission(s) to save these,
             # instead of the complete object.
