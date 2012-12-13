@@ -5,10 +5,10 @@ from __future__ import unicode_literals
 class ApplicationException( Exception ):
     """A base exception for other application errors."""
 
-    def __init__( self, message='', error_code=0, *args, **kwargs ):
+    def __init__( self, message='', code=0, *args, **kwargs ):
         super( ApplicationException, self ).__init__( message, *args, **kwargs )
-        self.error_code = error_code
-
+        if code > 0:
+            self.code = code
 
 class PermissionError( ApplicationException ):
     def __init__( self, attribute_name, permission ):
@@ -20,5 +20,5 @@ class PermissionError( ApplicationException ):
         class_name = instance.__class__.__name__
 
         message = "Permission denied; `{}` required for {}.{}".format( permission, class_name, attribute_name )
-        super( PermissionError, self ).__init__( message, error_code=100 )
+        super( PermissionError, self ).__init__( message, code=100 )
 
