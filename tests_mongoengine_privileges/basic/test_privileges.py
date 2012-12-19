@@ -143,7 +143,7 @@ class PrivilegeTestCase( unittest.TestCase ):
 
 
     def test_add_remove_permission( self ):
-        priv = Privilege( user=self.request.user )
+        priv = Privilege( user=self.request.user.id )
 
         priv.add( 'view' )
 
