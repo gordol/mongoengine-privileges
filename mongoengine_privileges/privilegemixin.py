@@ -65,13 +65,13 @@ class PrivilegeMixin( RelationManagerMixin ):
         elif self.pk:
             #  Try to save individual fields (relations), since the user may have permission(s) to save these,
             # instead of the complete object.
-            changed_relations = self.get_changed_relations()
+            changed_fields = self.get_changed_fields()
 
-            for relation in changed_relations:
+            for relation in changed_fields:
                 permission = self.get_permission_for( relation ) or permission
                 self.update( request, field_name=relation, caller=self, caller_permission=permission )
 
-            if not changed_relations:
+            if not changed_fields:
                 raise PermissionError( 'save', permission )
         else:
             raise PermissionError( 'save', permission )
@@ -148,12 +148,12 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         # Check permissions for updated relations if the document has an id
         if self.pk:
-            changed_relations = self.get_changed_relations()
+            changed_fields = self.get_changed_fields()
 
-            for relation_name in changed_relations:
-                permission = self.get_permission_for( relation_name )
+            for field_name in changed_fields:
+                permission = self.get_permission_for( field_name )
                 if permission and not self.may( request, permission ):
-                    raise PermissionError( relation_name, permission )
+                    raise PermissionError( field_name, permission )
 
         return super( PrivilegeMixin, self ).validate()
 
