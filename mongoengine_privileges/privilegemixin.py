@@ -104,9 +104,11 @@ class PrivilegeMixin( RelationManagerMixin ):
                 if not caller.may( request, caller_permission ):
                     raise PermissionError( 'update_{}'.format( field_name ), caller_permission )
 
-            # If a specific permission has been configured for `field_name`, check it
+            # See if an explicit permission has been configured for `field_name`.
+            # It'll return `None` if no explicit permission has been set.
             permission = self.get_permission_for( field_name )
 
+        # Check `permission`, and update if we're allowed to (if `permission` is `None`, that means it's allowed).
         if self.may( request, permission ):
             return super( PrivilegeMixin, self ).update( request, field_name, **kwargs )
         else:
