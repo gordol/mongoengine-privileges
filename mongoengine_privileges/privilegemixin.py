@@ -78,7 +78,8 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def update( self, request, field_name=None, caller=None, caller_permission='update', **kwargs ):
         '''
-        Update one or more fields on this document. When updating a single field,
+        Update one or more fields on this document. When updating a single field (using `field_name`),
+        use `caller_permission` and `caller` to define what permission gets checked on what Document.
 
         If `caller` is not supplied when `field_name` is, `caller` is set to `self`.
 
