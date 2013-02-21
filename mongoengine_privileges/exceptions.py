@@ -11,7 +11,7 @@ class ApplicationException( Exception ):
             self.code = code
 
 class PermissionError( ApplicationException ):
-    def __init__( self, attribute_name, permission ):
+    def __init__( self, attribute_name, permission='?' ):
         # Determine the name of the class throwing the error
         import inspect
         frame, module, line, function, context, index = inspect.stack()[1]
