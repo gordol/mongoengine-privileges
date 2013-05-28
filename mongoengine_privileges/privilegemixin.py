@@ -65,14 +65,13 @@ class PrivilegeMixin( RelationManagerMixin ):
         elif self.pk:
             #  Try to save individual fields (relations), since the user may have permission(s) to save these,
             # instead of the complete object.
+            # `changed_fields` can also be empty; in that case, continue without an error. This may mean
+            # that whatever change triggered the call to `save` has been taken care of already by business logic.
             changed_fields = self.get_changed_fields()
 
             for relation in changed_fields:
                 permission = self.get_permission_for( relation ) or permission
                 self.update( request, field_name=relation, caller=self, caller_permission=permission )
-
-            if not changed_fields:
-                raise PermissionError( 'save', permission )
         else:
             raise PermissionError( 'save', permission )
 
