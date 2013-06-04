@@ -117,14 +117,13 @@ class PrivilegeMixin( RelationManagerMixin ):
     def update_privileges( self, request, caller=None ):
         '''
         Explicitly update `privileges` ONLY; this bypasses other security.
-        However, the current `request.user` MUST be allowed to update the Document that is trying to modify
-        the `privileges` on this Document.
+        However, the current `request.user` MUST be allowed to update the Document set as `caller`.
 
         @param request:
         @type request: Request
         @return:
         '''
-        caller = caller or inspect.stack()[ 1 ][ 0 ].f_locals[ 'self' ]
+        caller = caller or self
         self.update( request, 'privileges', caller=caller )
 
     def delete( self, request, safe=False ):
@@ -218,7 +217,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         return mongoengine_privileges.may_create_default
 
-    def grant( self, request, permissions, principal ):
+    def grant( self, request, permissions, principal, caller=None ):
         '''
         Add permissions for the given principal, and persists the updated
         privileges right away. The permission check for updating the Document
@@ -233,9 +232,9 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         if self.may( request, permission ):
             self.add_permissions( permissions, principal )
-            return super( PrivilegeMixin, self ).update( set__privileges=self.privileges )
+            return self.update_privileges( request, caller )
 
-    def revoke( self, request, permissions, principal ):
+    def revoke( self, request, permissions, principal, caller=None ):
         '''
         Remove permissions for the given principal, and persists the updated
         privileges right away. The permission check for updating the Document
@@ -250,7 +249,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         if self.may( request, permission ):
             self.remove_permissions( permissions, principal )
-            return super( PrivilegeMixin, self ).update( request, 'privileges' )
+            return self.update_privileges( request, caller )
 
     def set_permissions( self, permissions, principal ):
         '''
