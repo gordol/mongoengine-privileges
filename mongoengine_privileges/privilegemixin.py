@@ -30,7 +30,7 @@ class PrivilegeMixin( RelationManagerMixin ):
     privileges = ListField( EmbeddedDocumentField( 'Privilege' ) )
 
     def save( self, request=None, force_insert=False, validate=True, clean=True, write_concern=None,
-              cascade=None, cascade_kwargs=None, _refs=None, **kwargs ):
+            cascade=None, cascade_kwargs=None, _refs=None, **kwargs ):
         '''
         Overridden save. Checks permissions for the `update` action, or for individual relations if the `request.user`
         is not allowed to update the Document as a whole.
@@ -60,8 +60,8 @@ class PrivilegeMixin( RelationManagerMixin ):
                 kwargs.setdefault( 'validate', validate )
                 validate = False
 
-            return super( PrivilegeMixin, self ).save( request=request, safe=safe, force_insert=force_insert,
-                validate=validate, write_options=write_options, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs )
+            return super( PrivilegeMixin, self ).save( request=request, force_insert=force_insert, validate=validate,
+                clean=clean, write_concern=write_concern, cascade=cascade, cascade_kwargs=cascade_kwargs, _refs=_refs, kwargs=kwargs )
         elif self.pk:
             #  Try to save individual fields (relations), since the user may have permission(s) to save these,
             # instead of the complete object.
@@ -126,7 +126,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         caller = caller or self
         self.update( request, 'privileges', caller=caller )
 
-    def delete( self, request, **write_concern):
+    def delete( self, request, **write_concern ):
         '''
         Overridden `delete`. Checks if the current user has the appropriate `delete` privilege to execute this action.
 
@@ -135,7 +135,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         permission = self.get_permission_for( 'delete' )
         if self.may( request, permission ):
-            return super( PrivilegeMixin, self ).delete( request=request, safe=safe )
+            return super( PrivilegeMixin, self ).delete( request=request, write_concern=write_concern )
         else:
             raise PermissionError( 'delete', permission )
 
