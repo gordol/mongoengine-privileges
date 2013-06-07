@@ -54,7 +54,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         if self.may( request, permission ):
             # Run validation now, since we can pass it `request` so it can check permissions.
             if validate:
-                self.validate( request=request )
+                self.validate()
                 # Stuff `validate` in `kwargs`, so `cascade_save` will receive it
                 kwargs = kwargs or {}
                 kwargs.setdefault( 'validate', validate )
