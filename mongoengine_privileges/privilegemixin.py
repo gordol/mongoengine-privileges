@@ -139,15 +139,6 @@ class PrivilegeMixin( RelationManagerMixin ):
         else:
             raise PermissionError( 'delete', permission )
 
-    def validate( self, request ):
-        '''
-        Overridden `validate`.
-
-        @param request:
-        @type request: Request
-        '''
-        return super( PrivilegeMixin, self ).validate()
-
     @property
     def __acl__( self ):
         acl = []
