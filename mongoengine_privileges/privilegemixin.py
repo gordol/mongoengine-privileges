@@ -34,7 +34,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         Overridden save. Checks permissions for the `update` action, or for individual relations if the `request.user`
         is not allowed to update the Document as a whole.
         '''
-        request = request or ( cascade_kwargs and cascade_kwargs[ 'request' ] ) or None
+        request = request or ( kwargs and '_request' in kwargs and kwargs[ '_request' ] ) or self._request or None
 
         if not request:
             raise ValueError( '`save` needs a `request` parameter (in order to properly invoke `may_*` and `on_change*` callbacks)' )
@@ -51,13 +51,12 @@ class PrivilegeMixin( RelationManagerMixin ):
         # - the required permission for this action has been explicitly set to an empty string (''),
         # - or the user has the appropriate permission
         if self.may( request, permission ):
-
             # Run validation now, since we can pass it `request` so it can check permissions.
             if validate:
                 self.validate( request=request )
-                # Stuff `validate` in `cascade_kwargs`, so `cascade_save` will receive it as a kwarg
-                cascade_kwargs = cascade_kwargs or {}
-                cascade_kwargs.setdefault( 'validate', validate )
+                # Stuff `validate` in `kwargs`, so `cascade_save` will receive it
+                kwargs = kwargs or {}
+                kwargs.setdefault( 'validate', validate )
                 validate = False
 
             return super( PrivilegeMixin, self ).save( request=request, safe=safe, force_insert=force_insert,
