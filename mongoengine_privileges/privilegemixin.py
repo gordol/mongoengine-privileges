@@ -29,7 +29,8 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     privileges = ListField( EmbeddedDocumentField( 'Privilege' ) )
 
-    def save( self, request=None, safe=True, force_insert=False, validate=True, write_options=None, cascade=None, cascade_kwargs=None, _refs=None ):
+    def save( self, request=None, force_insert=False, validate=True, clean=True, write_concern=None,
+              cascade=None, cascade_kwargs=None, _refs=None, **kwargs ):
         '''
         Overridden save. Checks permissions for the `update` action, or for individual relations if the `request.user`
         is not allowed to update the Document as a whole.
@@ -126,7 +127,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         caller = caller or self
         self.update( request, 'privileges', caller=caller )
 
-    def delete( self, request, safe=False ):
+    def delete( self, request, **write_concern):
         '''
         Overridden `delete`. Checks if the current user has the appropriate `delete` privilege to execute this action.
 
