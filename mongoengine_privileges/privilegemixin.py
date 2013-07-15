@@ -157,7 +157,7 @@ class PrivilegeMixin( RelationManagerMixin ):
                 principal = priv.group
 
             if principal:
-                acl.append( ( Allow, principal, priv.permissions ) )
+                acl.append( ( Allow, str( principal ), priv.permissions ) )
 
         # Everything that's not explicitly allowed is forbidden; add a final DENY_ALL
         acl.append( DENY_ALL )
