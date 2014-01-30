@@ -70,8 +70,11 @@ class PrivilegeMixin( RelationManagerMixin ):
             changed_fields = self.get_changed_fields()
 
             for relation in changed_fields:
-                permission = self.get_permission_for( relation ) or permission
-                self.update( request, field_name=relation, caller=self, caller_permission=permission )
+                perm = self.get_permission_for( relation )
+                if perm is None:
+                    perm = permission
+
+                self.update( request, field_name=relation, caller=self, caller_permission=perm )
         else:
             raise PermissionError( 'save', permission )
 
