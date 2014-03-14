@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import unicode_literals
+
+
 
 
 def monkeypatch_method(cls):
@@ -39,7 +39,7 @@ last_id = 0
 def get_object_id():
     global last_id
     last_id += 1
-    return ObjectId( unicode( last_id ).zfill( 24 ) )
+    return ObjectId( str( last_id ).zfill( 24 ) )
 
 
 class FauxSave( object ):
@@ -70,7 +70,7 @@ class FauxSave( object ):
         name = self.__class__.__name__
 
         if hasattr( self, 'name' ):
-            name += ':' + unicode( self.name )
+            name += ':' + str( self.name )
 
         return '{} ({}@{})'.format( name, self.pk, id( self ) )
 

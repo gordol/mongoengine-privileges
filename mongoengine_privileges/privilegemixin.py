@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import unicode_literals
+
+
 
 import inspect
 
@@ -14,6 +14,7 @@ from .exceptions import PermissionError
 from .privilege import Privilege
 
 import mongoengine_privileges
+import collections
 
 
 class PrivilegeMixin( RelationManagerMixin ):
@@ -195,7 +196,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         method = getattr( self, 'may_{}'.format( permission ), None )
 
-        if callable( method ):
+        if isinstance( method, collections.Callable):
             result = method( request )
         else:
             result = has_permission( permission, self, request )
@@ -323,7 +324,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         if not privilege and create:
             user = principal.pk if isinstance( principal, Document ) else None
-            group = principal if isinstance( principal, basestring ) else None
+            group = principal if isinstance( principal, str ) else None
 
             if not user and not group:
                 raise AttributeError( 'Either a user or group is needed to create a `Privilege`' )

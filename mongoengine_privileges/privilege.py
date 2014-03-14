@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import unicode_literals
+
+
 
 from mongoengine import *
 import mongoengine_privileges
@@ -22,7 +22,7 @@ class Privilege( EmbeddedDocument ):
         @type permissions: string or list or tuple
         @return:
         """
-        if isinstance( permissions, basestring ):
+        if isinstance( permissions, str ):
             permissions = [ permissions ]
 
         self.permissions = permissions
@@ -35,7 +35,7 @@ class Privilege( EmbeddedDocument ):
         @type permissions: string or list or tuple
         @return:
         """
-        if isinstance( permissions, basestring ):
+        if isinstance( permissions, str ):
             permissions = [ permissions ]
 
         self.permissions = list( set( self.permissions ).union( permissions ) )
@@ -48,11 +48,11 @@ class Privilege( EmbeddedDocument ):
         @type permissions: string or list or tuple
         @return:
         """
-        if isinstance( permissions, basestring ):
+        if isinstance( permissions, str ):
             permissions = [ permissions ]
 
         self.permissions = list( set( self.permissions ).difference( permissions ) )
 
     def __unicode__( self ):
-        return unicode( 'user={}, group={}: {}'.format( self.user, self.group, self.permissions ) )
+        return str( 'user={}, group={}: {}'.format( self.user, self.group, self.permissions ) )
 
