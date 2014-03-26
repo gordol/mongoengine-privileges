@@ -58,11 +58,11 @@ class FauxSave( object ):
             self.pk = get_object_id()
 
     @monkeypatch_method( Document )
-    def update(self, **kwargs):
+    def update( self, **kwargs ):
         pass
 
     @monkeypatch_method( Document )
-    def delete(self, safe=False):
+    def delete( self, **kwargs ):
         pass
 
     @monkeypatch_method( Document )

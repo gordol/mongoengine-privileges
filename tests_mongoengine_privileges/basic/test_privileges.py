@@ -31,8 +31,8 @@ class PrivilegedDocument( PrivilegeMixin, Document ):
         }
     }
 
-    def on_change_pk( self, value, prev_value, request, field_name ):
-        print( ('pk updated; current={}, previous={}').format( value, prev_value ) )
+    def on_change_pk( self, request, new_value, prev_value, field_name ):
+        print( ('pk updated; current={}, previous={}').format( new_value, prev_value ) )
         self.set_permissions( [ 'view', 'update' ], request.user )
 
     def may_create( self, request ):
@@ -75,7 +75,7 @@ class Directory( PrivilegeMixin, Document ):
     def may_delete( self, request ):
         return True
 
-    def on_change_pk( self, request, **kwargs ):
+    def on_change_pk( self, request, pk, noop, **kwargs ):
         self.set_permissions( 'update', request.user )
 
 
@@ -87,7 +87,7 @@ class File( PrivilegeMixin, Document ):
     def may_create( self, request ):
         return True
 
-    def on_change_directory( self, value, prev_value, **kwargs ):
+    def on_change_directory( self, request, value, prev_value, **kwargs ):
         print( ('directory updated; current={}, previous={}').format( value, prev_value ) )
     
     
@@ -105,7 +105,7 @@ class PrivilegeTestCase( unittest.TestCase ):
 
         self.config = testing.setUp( request=self.request )
 
-        self.config.testing_securitypolicy( userid=user_id, groupids=self.request.user.groups, permissive=True )
+        self.config.testing_securitypolicy( userid=str( user_id ), permissive=True )
 
         self.config.set_authorization_policy( ACLAuthorizationPolicy() )
 
@@ -194,6 +194,10 @@ class PrivilegeTestCase( unittest.TestCase ):
 
         self.assertTrue( doc.may( self.request, 'view' ) )
 
+    def test_on_change_triggered_once( self ):
+        # When updating multiple fields
+        pass
+
 
     def test_meta( self ):
         # doc doesn't have explicit permissions set; uses the `default_permissions`
@@ -226,31 +230,21 @@ class PrivilegeTestCase( unittest.TestCase ):
         self.assertEqual( dir.may_add_file_called, 1 )
 
         # `validate` could, but shouldn't, raise an exception
-        dir.validate( request=self.request )
-        self.assertEqual( dir.may_add_file_called, 1 )
+        # dir.validate()
+        # self.assertEqual( dir.may_add_file_called, 1 )
 
         # Create a file, save it so give it an `id` and set initial permissions
         file = File( name='todo.txt', directory=dir )
-        file.save( request=self.request )
-
-        # dir.files has been changed, so `may_add_file` should be called when validating
-        # `validate` could, but shouldn't, raise an exception
-        dir.validate( request=self.request )
-        self.assertEqual( dir.may_add_file_called, 2 )
+        file.save( self.request )
 
         # dir.files is still marked as changed, so `may_add_file` should be called when validating
         # `validate` could, but shouldn't, raise an exception
-        dir.save( request=self.request )
-        self.assertEqual( dir.may_add_file_called, 3 )
-
-        # dir.files shouldn't be marked as changed anymore; `may_add_file` shouldn't be called when validating
-        # `validate` could, but shouldn't, raise an exception
-        dir.validate( request=self.request )
-        self.assertEqual( dir.may_add_file_called, 3 )
+        dir.save( self.request )
+        self.assertEqual( dir.may_add_file_called, 1 )
 
         # the `delete` action doesn't specify a required permission, so `may_delete` won't get called
         self.assertEqual( dir.may_delete_called, 0 )
-        dir.delete( request=self.request )
+        dir.delete( self.request )
         self.assertEqual( dir.may_delete_called, 0 )
 
     def test_update( self ):

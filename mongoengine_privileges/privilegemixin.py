@@ -40,7 +40,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         if not request:
             raise ValueError( '`save` needs a `request` parameter (in order to properly invoke `may_*` and `on_change*` callbacks)' )
         elif not isinstance( request, Request ):
-            raise ValueError( 'request={} should be an instance of `pyramid.request.Request`'.format( request ) )
+            raise ValueError( 'request=`{}` should be an instance of `pyramid.request.Request`'.format( request ) )
 
         if self.pk is None:
             permission = self.get_permission_for( 'create' )
@@ -89,21 +89,24 @@ class PrivilegeMixin( RelationManagerMixin ):
         @param field_name:
         @param caller:
         @type caller: Document
-        @param caller_permission: a permission that is required to perform an update regardless of other checks.
+        @param caller_permission: a permission that is required to perform an update in addition to other checks.
                 Defaults to 'update'.
         @param kwargs:
         @return:
         '''
+        if not isinstance( request, Request ):
+            raise ValueError( 'request=`{}` should be an instance of `pyramid.request.Request`'.format( request ) )
+
         if field_name is None:
             permission = self.get_permission_for( 'update' )
         else:
             if not getattr( self, field_name, None ):
                 AttributeError( 'Cannot resolve field={} on {}'.format( field_name, self ) )
 
-            caller = caller or self
-
             # Check if the request.user is allowed to update the document calling `update` on this document.
             if caller_permission:
+                caller = caller or self
+
                 if not caller.may( request, caller_permission ):
                     raise PermissionError( 'update_{}'.format( field_name ), caller_permission )
 
@@ -115,7 +118,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         if self.may( request, permission ):
             return super( PrivilegeMixin, self ).update( request, field_name, **kwargs )
         else:
-            raise PermissionError( 'update', permission )
+            raise PermissionError( 'update_{}'.format( field_name ), permission )
 
     def update_privileges( self, request, caller=None ):
         '''
@@ -148,6 +151,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         for priv in self.privileges:
             user = priv[ 'user' ]
+            principal = priv.group
 
             if user:
                 if isinstance( user, ObjectId ):
@@ -156,8 +160,6 @@ class PrivilegeMixin( RelationManagerMixin ):
                     principal = user.id
                 elif isinstance( user, Document ):
                     principal = user.pk
-            else:
-                principal = priv.group
 
             if principal:
                 acl.append( ( Allow, str( principal ), priv.permissions ) )
