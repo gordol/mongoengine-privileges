@@ -84,3 +84,47 @@ class Struct( object ):
 
     def __ne__( self, other ):
         return not self.__eq__( other )
+
+
+def get_mock_request( user, request=None, settings=None ):
+    '''
+    Create (and fill) a mock request object, useful when needing to save initial data or to save data
+    on behalf of another person.
+
+    Be aware it's limited in functionality; because we replace the config (and auth policies),
+    stuff like routing (`request.route_url`) and other things attached to the registry (mailer)
+    will fail.
+
+    @param user:
+    @param request: if supplied, this request will be modified with new auth policies instead of creating a dummy request.
+        It's settings (`request.registry.settings`) are also used, unless the `settings` parameter is given.
+    @param settings: application settings to use. For a regular request, these can be accessed by `request.registry.settings`
+    @return:
+    '''
+    from pyramid.authorization import ACLAuthorizationPolicy
+    from pyramid.request import Request
+    from mongoengine_relational import DocumentCache
+    from pyramid import testing
+
+    if not request:
+        request = Request.blank( '/api/v1/' )
+
+        # Instantiate a DocumentCache; it will attach itself to `request.cache`.
+        DocumentCache( request )
+    elif not settings:
+        settings = request.registry.settings
+
+    request.user = user
+
+    # Set up a mock config. Set the authentication policy to the generated securitypolicy, so it will identify
+    # the correct user on `authenticated_id` and `unauthenticated_id`.
+    # The authorization policy is set to a new ACL policy; setting this to the generated securitypolicy would
+    # allow anything to pass (or fail, with `permissive=False`).
+    config = testing.setUp( request=request, settings=settings )
+    policy = config.testing_securitypolicy( userid=str( user.pk ) ) #, permissive=True )
+    config.set_authentication_policy( policy )
+    config.set_authorization_policy( ACLAuthorizationPolicy() )
+
+    request.registry = config.registry
+
+    return request

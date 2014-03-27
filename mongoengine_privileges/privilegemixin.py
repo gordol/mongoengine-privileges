@@ -65,44 +65,53 @@ class PrivilegeMixin( RelationManagerMixin ):
         elif self.pk:
             #  Try to save individual fields (relations), since the user may have permission(s) to save these,
             # instead of the complete object.
-            # `changed_fields` can also be empty; in that case, continue without an error. This may mean
+            # `changed_fields` can also be empty; in that case, just continue (without an error). This may mean
             # that whatever change triggered the call to `save` has been taken care of already by business logic.
             changed_fields = self.get_changed_fields()
-
-            for relation in changed_fields:
-                self.update( request, field_name=relation )
+            if changed_fields:
+                self.update( request, *changed_fields )
         else:
             raise PermissionError( 'save', permission )
 
-    def update( self, request, field_name=None, **kwargs ):
+    def update( self, request, *args, **kwargs ):
         '''
         Update one or more fields on this document. If a `field_name` is given, the appropriate permission
         for the given `field_name` is checked; only that field will be updated.
         If `field_name` is not given, the permission required to `update` the document will be checked.
 
         @param request:
-        @param field_name:
-        @param kwargs:
+        @type request: pyramid.request.Request
+        @param args: a list of field names that should be updated
         @return:
         '''
         if not isinstance( request, Request ):
             raise ValueError( 'request=`{}` should be an instance of `pyramid.request.Request`'.format( request ) )
 
-        if field_name is None:
-            permission = self.get_permission_for( 'update' )
-        else:
-            if not getattr( self, field_name, None ):
-                AttributeError( 'Cannot resolve field={} on {}'.format( field_name, self ) )
+        permissions = set()
 
-            # See if an explicit permission has been configured for `field_name`.
-            # It'll return `None` if no explicit permission has been set.
-            permission = self.get_permission_for( field_name )
+        if not args:
+            permissions.add( self.get_permission_for( 'update' ) )
+        else:
+            for field_name in args:
+                if not getattr( self, field_name, None ):
+                    AttributeError( 'Cannot resolve field={} on {}'.format( field_name, self ) )
+
+                # See if an explicit permission has been configured for `field_name`.
+                # An empty string or False mean no permission is required. `None` means no explicit permission has been
+                # defined; in that case, we'll want to check the default permission for update.
+                permission = self.get_permission_for( field_name )
+
+                if permission is None:
+                    permission = self.get_permission_for( 'update' )
+
+                permissions.add( permission )
 
         # Check `permission`, and update if we're allowed to (if `permission` is `None`, that means it's allowed).
-        if self.may( request, permission ):
-            return super( PrivilegeMixin, self ).update( request, field_name, **kwargs )
-        else:
-            raise PermissionError( 'update_{}'.format( field_name ), permission )
+        for permission in permissions:
+            if not self.may( request, permission ):
+                raise PermissionError( '?', permission )
+
+        return super( PrivilegeMixin, self ).update( request, *args, **kwargs )
 
     def update_privileges( self, request ):
         '''
@@ -154,6 +163,11 @@ class PrivilegeMixin( RelationManagerMixin ):
         return acl
 
     def get_permission_for( self, name ):
+        '''
+        @param name: the name of the field for which to look up the appropriate permission
+        @return:
+        @rtype: string
+        '''
         permissions = self._meta.get( 'permissions', self.default_permissions )
         return permissions.get( name, None )
 
@@ -195,13 +209,14 @@ class PrivilegeMixin( RelationManagerMixin ):
         '''
         return mongoengine_privileges.may_create_default
 
-    def grant( self, request, permissions, principal, caller=None ):
+    def grant( self, request, permissions, principal ):
         '''
         Add permissions for the given principal, and persists the updated
         privileges right away. The permission check for updating the Document
         is performed before actually removing the permissions.
 
         @param permissions:
+        @type permissions: string or list or tuple
         @param principal:
         @param request:
         @return:
@@ -210,9 +225,9 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         if self.may( request, permission ):
             self.add_permissions( permissions, principal )
-            return self.update_privileges( request, caller )
+            return self.update_privileges( request )
 
-    def revoke( self, request, permissions, principal, caller=None ):
+    def revoke( self, request, permissions, principal ):
         '''
         Remove permissions for the given principal, and persists the updated
         privileges right away. The permission check for updating the Document
@@ -220,6 +235,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         be used to remove the privilege required for `update`.
 
         @param permissions:
+        @type permissions: string or list or tuple
         @param principal:
         @return:
         '''
@@ -227,7 +243,7 @@ class PrivilegeMixin( RelationManagerMixin ):
 
         if self.may( request, permission ):
             self.remove_permissions( permissions, principal )
-            return self.update_privileges( request, caller )
+            return self.update_privileges( request )
 
     def set_permissions( self, permissions, principal ):
         '''

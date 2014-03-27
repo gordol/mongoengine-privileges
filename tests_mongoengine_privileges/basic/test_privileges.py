@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 import unittest
 
-from tests_mongoengine_privileges.utils import FauxSave, Struct, get_object_id
+from tests_mongoengine_privileges.utils import FauxSave, Struct, get_object_id, get_mock_request
 
 from pyramid import testing
 from pyramid.authorization import ACLAuthorizationPolicy
@@ -31,7 +31,7 @@ class PrivilegedDocument( PrivilegeMixin, Document ):
         }
     }
 
-    def on_change_pk( self, request, new_value, prev_value, field_name ):
+    def on_change_pk( self, request, new_value, prev_value, updated_fields ):
         print( ('pk updated; current={}, previous={}').format( new_value, prev_value ) )
         self.set_permissions( [ 'view', 'update' ], request.user )
 
@@ -55,19 +55,20 @@ class Directory( PrivilegeMixin, Document ):
         'permissions': {
             'create': 'create',
             'update': 'update',
-            'files': 'add_file',
+            'files': 'update_files',
+            'name': 'update_name',
             'delete': ''
         }
     }
 
-    may_add_file_called = 0
-
-    def may_add_file( self, request ):
-        print( 'may_add_file called for `{}`'.format( self ) )
-        self.may_add_file_called += 1
-        return True
-
+    may_update_files_called = 0
+    on_change_called = 0
     may_delete_called = 0
+
+    def may_update_files( self, request ):
+        print( 'may_update_files_called called for `{}`'.format( self ) )
+        self.may_update_files_called += 1
+        return True
 
     def may_create( self, request ):
         return True
@@ -76,7 +77,10 @@ class Directory( PrivilegeMixin, Document ):
         return True
 
     def on_change_pk( self, request, pk, noop, **kwargs ):
-        self.set_permissions( 'update', request.user )
+        self.set_permissions( [ 'update', 'update_name' ], request.user )
+
+    def on_change( self, request, changed_fields, updated_fields ):
+        self.on_change_called += 1
 
 
 class File( PrivilegeMixin, Document ):
@@ -95,31 +99,19 @@ class File( PrivilegeMixin, Document ):
 class PrivilegeTestCase( unittest.TestCase ):
 
     def setUp( self ):
-        # Setup application/request config
-        user_id = get_object_id()
-        self.request = Request.blank( '/api/v1/' )
-        self.request.user = Person( id=user_id, name='dude', email='dude@progressivecompany.com', groups=[ 'g:deliverable1' ] )
-
-        # Instantiate a DocumentCache; it will attach itself to `request.cache`.
-        DocumentCache( self.request )
-
-        self.config = testing.setUp( request=self.request )
-
-        self.config.testing_securitypolicy( userid=str( user_id ), permissive=True )
-
-        self.config.set_authorization_policy( ACLAuthorizationPolicy() )
-
-        #self.config.set_authentication_policy( SessionAuthenticationPolicy( 'verysecret' , callback=get_principle_list ) )
-
         # Setup data
         d = self.data = Struct()
+
+        # Setup application/request config
+        user_id = get_object_id()
+        d.p1 = Person( id=user_id, name='p1', email='p1@progressivecompany.com', groups=[ 'g:deliverable1' ] )
+        self.request = get_mock_request( d.p1 )
 
     def tearDown( self ):
         testing.tearDown()
 
         # Clear our references
         self.data = None
-
 
     def test_get_privilege( self ):
         self.assertEqual( len( self.request.user.privileges ), 0 )
@@ -194,11 +186,6 @@ class PrivilegeTestCase( unittest.TestCase ):
 
         self.assertTrue( doc.may( self.request, 'view' ) )
 
-    def test_on_change_triggered_once( self ):
-        # When updating multiple fields
-        pass
-
-
     def test_meta( self ):
         # doc doesn't have explicit permissions set; uses the `default_permissions`
         simple_doc = SimplePrivilegedDocument()
@@ -213,7 +200,7 @@ class PrivilegeTestCase( unittest.TestCase ):
     def test_permission_methods( self ):
         # Create a directory, save it so give it an `id` and set initial permissions
         dir = Directory( name='Code' )
-        dir.save( request=self.request )
+        dir.save( self.request )
 
         # `update` has been granted
         self.assertTrue( dir.may( self.request, 'update' ) )
@@ -225,22 +212,17 @@ class PrivilegeTestCase( unittest.TestCase ):
         self.assertTrue( dir.may( self.request, None ) )
         self.assertTrue( dir.may( self.request, '' ) )
 
-        # `add_file` has been implemented as a method, `may_add_file`
-        self.assertTrue( dir.may( self.request, 'add_file' ) )
-        self.assertEqual( dir.may_add_file_called, 1 )
-
-        # `validate` could, but shouldn't, raise an exception
-        # dir.validate()
-        # self.assertEqual( dir.may_add_file_called, 1 )
+        # `add_file` has been implemented as a method, `may_update_file`
+        self.assertTrue( dir.may( self.request, 'update_files' ) )
+        self.assertEqual( dir.may_update_files_called, 1 )
 
         # Create a file, save it so give it an `id` and set initial permissions
         file = File( name='todo.txt', directory=dir )
         file.save( self.request )
 
-        # dir.files is still marked as changed, so `may_add_file` should be called when validating
-        # `validate` could, but shouldn't, raise an exception
+        # dir.files is still marked as changed, but only `may_update` is called on `save`
         dir.save( self.request )
-        self.assertEqual( dir.may_add_file_called, 1 )
+        self.assertEqual( dir.may_update_files_called, 1 )
 
         # the `delete` action doesn't specify a required permission, so `may_delete` won't get called
         self.assertEqual( dir.may_delete_called, 0 )
@@ -248,7 +230,55 @@ class PrivilegeTestCase( unittest.TestCase ):
         self.assertEqual( dir.may_delete_called, 0 )
 
     def test_update( self ):
-        pass
+        dir = Directory( name='Code' )
+        dir.save( self.request )
+
+        self.assertEqual( dir.on_change_called, 1 )
+
+        # Update a field on a document the user has `update` permission on
+        f1 = File( name='f1', directory=dir )
+        f1.save( self.request )
+        dir.update( self.request, 'files' )
+
+        self.assertEqual( dir.on_change_called, 2 )
+        self.assertEqual( dir.may_update_files_called, 1 )
+
+        dir.name = 'New code'
+        dir.update( self.request, 'name' )
+
+        self.assertEqual( dir.on_change_called, 3 )
+        self.assertEqual( dir.may_update_files_called, 1 )
+
+        # Update a field on a document the user doesn't have the `update` permission on
+        p2 = Person( id=get_object_id(), name='p2', email='p2@progressivecompany.com' )
+        request_p2 = get_mock_request( p2 )
+
+        dir.grant( self.request, 'update_files', p2 )
+        self.assertEqual( dir.on_change_called, 4 )
+
+        with self.assertRaises( PermissionError ):
+            dir.name = 'Old code'
+            dir.update( request_p2, 'name' )
+
+        f2 = File( name='f2', directory=dir )
+        f2.save( request_p2 )
+        dir.update( request_p2, 'files' )
+
+        self.assertEqual( dir.on_change_called, 5 )
+        self.assertEqual( dir.may_update_files_called, 2 )
+
+        # Update two fields on `dir`; `p2` still doesn't have the `update` permission, but may update those two fields
+        dir.grant( self.request, 'update_name', p2 )
+        self.assertEqual( dir.on_change_called, 6 )
+
+        dir.name = 'Code'
+        dir.files.remove( f2 )
+
+        self.assertSetEqual( dir.get_changed_fields(), { 'name', 'files' } )
+
+        dir.save( request_p2 )
+        self.assertEqual( dir.on_change_called, 7 )
+        self.assertEqual( dir.may_update_files_called, 3 )
 
     def test_save( self ):
         pass
