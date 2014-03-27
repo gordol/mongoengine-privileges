@@ -70,27 +70,18 @@ class PrivilegeMixin( RelationManagerMixin ):
             changed_fields = self.get_changed_fields()
 
             for relation in changed_fields:
-                perm = self.get_permission_for( relation )
-                if perm is None:
-                    perm = permission
-
-                self.update( request, field_name=relation, caller=self, caller_permission=perm )
+                self.update( request, field_name=relation )
         else:
             raise PermissionError( 'save', permission )
 
-    def update( self, request, field_name=None, caller=None, caller_permission='update', **kwargs ):
+    def update( self, request, field_name=None, **kwargs ):
         '''
-        Update one or more fields on this document. When updating a single field (using `field_name`),
-        use `caller_permission` and `caller` to define what permission gets checked on what Document.
-
-        If `caller` is not supplied when `field_name` is, `caller` is set to `self`.
+        Update one or more fields on this document. If a `field_name` is given, the appropriate permission
+        for the given `field_name` is checked; only that field will be updated.
+        If `field_name` is not given, the permission required to `update` the document will be checked.
 
         @param request:
         @param field_name:
-        @param caller:
-        @type caller: Document
-        @param caller_permission: a permission that is required to perform an update in addition to other checks.
-                Defaults to 'update'.
         @param kwargs:
         @return:
         '''
@@ -103,13 +94,6 @@ class PrivilegeMixin( RelationManagerMixin ):
             if not getattr( self, field_name, None ):
                 AttributeError( 'Cannot resolve field={} on {}'.format( field_name, self ) )
 
-            # Check if the request.user is allowed to update the document calling `update` on this document.
-            if caller_permission:
-                caller = caller or self
-
-                if not caller.may( request, caller_permission ):
-                    raise PermissionError( 'update_{}'.format( field_name ), caller_permission )
-
             # See if an explicit permission has been configured for `field_name`.
             # It'll return `None` if no explicit permission has been set.
             permission = self.get_permission_for( field_name )
@@ -120,17 +104,15 @@ class PrivilegeMixin( RelationManagerMixin ):
         else:
             raise PermissionError( 'update_{}'.format( field_name ), permission )
 
-    def update_privileges( self, request, caller=None ):
+    def update_privileges( self, request ):
         '''
-        Explicitly update `privileges` ONLY; this bypasses other security.
-        However, the current `request.user` MUST be allowed to update the Document set as `caller`.
+        Explicitly update `privileges` only.
 
         @param request:
         @type request: Request
         @return:
         '''
-        caller = caller or self
-        self.update( request, 'privileges', caller=caller )
+        self.update( request, 'privileges' )
 
     def delete( self, request, **write_concern ):
         '''

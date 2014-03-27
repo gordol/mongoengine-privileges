@@ -250,6 +250,9 @@ class PrivilegeTestCase( unittest.TestCase ):
     def test_update( self ):
         pass
 
+    def test_save( self ):
+        pass
+
     def test_update_privileges( self ):
         pass
 
