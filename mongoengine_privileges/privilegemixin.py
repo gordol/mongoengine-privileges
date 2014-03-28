@@ -115,13 +115,13 @@ class PrivilegeMixin( RelationManagerMixin ):
 
     def update_privileges( self, request ):
         '''
-        Explicitly update `privileges` only.
+        Explicitly update `privileges` only. This bypasses any further security checks!
 
         @param request:
         @type request: Request
         @return:
         '''
-        self.update( request, 'privileges' )
+        super( PrivilegeMixin, self ).update( request, 'privileges' )
 
     def delete( self, request, **write_concern ):
         '''
