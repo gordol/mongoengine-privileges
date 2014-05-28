@@ -71,7 +71,7 @@ class PrivilegeMixin( RelationManagerMixin ):
             if changed_fields:
                 self.update( request, *changed_fields )
         else:
-            raise PermissionError( 'save', permission )
+            raise PermissionError( request, 'save', permission )
 
     def update( self, request, *args, **kwargs ):
         '''
@@ -109,7 +109,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         # Check `permission`, and update if we're allowed to (if `permission` is `None`, that means it's allowed).
         for permission in permissions:
             if not self.may( request, permission ):
-                raise PermissionError( '?', permission )
+                raise PermissionError( request, '?', permission )
 
         return super( PrivilegeMixin, self ).update( request, *args, **kwargs )
 
@@ -134,7 +134,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         if self.may( request, permission ):
             return super( PrivilegeMixin, self ).delete( request=request, write_concern=write_concern )
         else:
-            raise PermissionError( 'delete', permission )
+            raise PermissionError( request, 'delete', permission )
 
     @property
     def __acl__( self ):

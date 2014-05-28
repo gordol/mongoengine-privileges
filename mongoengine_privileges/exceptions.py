@@ -1,6 +1,9 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
+
+log = logging.getLogger(__name__)
 
 class ApplicationException( Exception ):
     """A base exception for other application errors."""
@@ -11,7 +14,7 @@ class ApplicationException( Exception ):
             self.code = code
 
 class PermissionError( ApplicationException ):
-    def __init__( self, attribute_name, permission='?' ):
+    def __init__( self, request, attribute_name, permission='?' ):
         # Determine the name of the class throwing the error
         import inspect
         frame, module, line, function, context, index = inspect.stack()[1]
@@ -20,5 +23,6 @@ class PermissionError( ApplicationException ):
         class_name = instance.__class__.__name__
 
         message = "Permission denied; `{}` required for {}.{}".format( permission, class_name, attribute_name )
+        log.info( 'PermissionError for user="{}" on object="{}". Message="{}"'.format( request.user, instance, message ) )
         super( PermissionError, self ).__init__( message, code=100 )
 
