@@ -109,7 +109,7 @@ class PrivilegeMixin( RelationManagerMixin ):
         # Check `permission`, and update if we're allowed to (if `permission` is `None`, that means it's allowed).
         for permission in permissions:
             if not self.may( request, permission ):
-                raise PermissionError( request, '?', permission )
+                raise PermissionError( request, args, permission )
 
         return super( PrivilegeMixin, self ).update( request, *args, **kwargs )
 

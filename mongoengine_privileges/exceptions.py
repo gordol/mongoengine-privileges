@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
+import collections
 
 log = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ class PermissionError( ApplicationException ):
         self_argument = frame.f_code.co_varnames[ 0 ]  # This *should* be 'self'.
         instance = frame.f_locals[ self_argument ]
         class_name = instance.__class__.__name__
+
+        if isinstance( attribute_name, collections.Iterable ):
+            if len( attribute_name ) == 1:
+                attribute_name = attribute_name[ 0 ]
+            else:
+                attribute_name = '(' + ', '.join( attribute_name ) + ')'
 
         message = "Permission denied; `{}` required for {}.{}".format( permission, class_name, attribute_name )
         log.info( 'PermissionError for user="{}" on object="{}". Message="{}"'.format( request.user, instance, message ) )
