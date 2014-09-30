@@ -23,9 +23,9 @@ class PermissionError( ApplicationException ):
         instance = frame.f_locals[ self_argument ]
         class_name = instance.__class__.__name__
 
-        if isinstance( attribute_name, collections.Iterable ):
+        if not isinstance( attribute_name,  basestring ) and isinstance( attribute_name, collections.Iterable ):
             if len( attribute_name ) == 1:
-                attribute_name = attribute_name[ 0 ]
+                attribute_name = attribute_name.pop()
             else:
                 attribute_name = '(' + ', '.join( attribute_name ) + ')'
 
