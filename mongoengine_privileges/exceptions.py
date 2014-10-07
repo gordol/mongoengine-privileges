@@ -25,7 +25,7 @@ class PermissionError( ApplicationException ):
 
         if not isinstance( attribute_name,  basestring ) and isinstance( attribute_name, collections.Iterable ):
             if len( attribute_name ) == 1:
-                attribute_name = attribute_name.pop()
+                attribute_name = list( attribute_name )[ 0 ]
             else:
                 attribute_name = '(' + ', '.join( attribute_name ) + ')'
 
