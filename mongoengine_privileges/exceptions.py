@@ -30,6 +30,6 @@ class PermissionError( ApplicationException ):
                 attribute_name = '(' + ', '.join( attribute_name ) + ')'
 
         message = "Permission denied; `{}` required for {}.{}".format( permission, class_name, attribute_name )
-        log.info( 'PermissionError for user="{}" on object="{}". Message="{}"'.format( request.user, instance, message ) )
+        log.info( 'PermissionError for user id="{}" on {} id="{}". Message="{}"'.format( request.user.id, class_name, instance.id, message ) )
         super( PermissionError, self ).__init__( message, code=100 )
 
