@@ -15,7 +15,7 @@ class ApplicationException( Exception ):
             self.code = code
 
 class PermissionError( ApplicationException ):
-    def __init__( self, request, attribute_name, permission='?' ):
+    def __init__( self, request, attribute_name, permission='?', **kwargs ):
         # Determine the name of the class throwing the error
         import inspect
         frame, module, line, function, context, index = inspect.stack()[1]
@@ -28,8 +28,11 @@ class PermissionError( ApplicationException ):
                 attribute_name = list( attribute_name )[ 0 ]
             else:
                 attribute_name = '(' + ', '.join( attribute_name ) + ')'
+        if 'objects' in kwargs:
+            self.objects = kwargs[ 'objects' ]
+        else:
+            self.objects = [ instance ]
 
         message = "Permission denied; `{}` required for {}.{}".format( permission, class_name, attribute_name )
         log.info( 'PermissionError for user id="{}" on {} id="{}". Message="{}"'.format( request.user.id, class_name, instance.id, message ) )
         super( PermissionError, self ).__init__( message, code=100 )
-
